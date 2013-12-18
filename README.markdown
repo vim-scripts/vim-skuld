@@ -4,6 +4,8 @@ Introduction
 Skuld is a [pomodoro timer][1] that runs inside Vim. It can help you track
 your tasks in an simple (or stupid) way.
 
+Please send pull request to https://github.com/l04m33/vim-skuld
+
 [1]: http://en.wikipedia.org/wiki/Pomodoro_technique
 
 Dependencies
@@ -11,6 +13,13 @@ Dependencies
 
 Skuld depends on `+python` or `+python3`, as well as `+clientserver`.
 Nothing else is needed.
+
+Installation
+============
+
+[Vundle][2] is recommended
+
+[2]: https://github.com/gmarik/vundle
 
 Usage
 =====
@@ -79,7 +88,7 @@ These variables can be set in you `.vimrc` to override the defaults:
 License
 =======
 
-This Vim plugin is licensed under the terms of [the MIT license][2].
+This Vim plugin is licensed under the terms of [the MIT license][3].
 
-[2]: http://l04m33.mit-license.org/
+[3]: http://l04m33.mit-license.org/
 
