@@ -24,6 +24,7 @@ function! SkuldLoad()
 
 "    let g:skuld_notify_cmd = "notify-send"
 "    let g:skuld_progress_symbol = "✔"
+"    let g:skuld_squash_symbol = "✗"
 "    let g:skuld_work_period = 25
 "    let g:skuld_rest_period = 5
 "    let g:skuld_long_rest_period = 15
@@ -33,6 +34,7 @@ function! SkuldLoad()
 
     command! -nargs=1 SkuldStartTimer   :py skuld_adaptor.start_timer(int(<args>))
     command! -nargs=0 SkuldStopTimer    :py skuld_adaptor.stop_timer()
+    command! -nargs=1 SkuldStartTask    :py skuld_adaptor.start_task(int(<args>))
     command! -nargs=1 SkuldSwitchTask   :py skuld_adaptor.switch_task(int(<args>))
     command! -nargs=0 SkuldGetState     :py print(skuld_adaptor.get_state())
     command! -nargs=0 SkuldBufOpen      :py skuld_adaptor.display_tasks()
@@ -43,9 +45,11 @@ function! SkuldLoad()
     function! SkuldBufOpenHook()
         call SkuldMapBufKeys()
         call SkuldSetBufHilight()
+        call SkuldSigns()
     endfunction
 
     function! SkuldMapBufKeys()
+        nnoremap <buffer> <cr> :execute "SkuldStartTask ".(line(".") - 1) \| SkuldGetState<cr>
     endfunction
 
     function! SkuldSetBufHilight()
@@ -57,6 +61,10 @@ function! SkuldLoad()
         hi link skuldTask      Function
     endfunction
 
+    function! SkuldSigns()
+        sign define SkuldCurrentTask text=> texthl=Comment
+    endfunction
+
     augroup SkuldBufAu
         autocmd!
         autocmd BufEnter    \[Skuld\ Tasks\] SkuldBufUpdate
@@ -65,7 +73,7 @@ function! SkuldLoad()
         autocmd InsertLeave \[Skuld\ Tasks\] SkuldBufUpdate
     augroup end
 
-    noremap <leader>sb :SkuldBufOpen<cr>
-    noremap <leader>ss :SkuldGetState<cr>
+    nnoremap <leader>sb :SkuldBufOpen<cr>
+    nnoremap <leader>ss :SkuldGetState<cr>
 
 endfunction

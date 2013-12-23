@@ -75,6 +75,7 @@ def skuld_closure():
             self._tasks = []
             self._cur_task = -1
             self._progress_symbol = '*'
+            self._squash_symbol = 'x'
             self._cur_state_start_time = None
             self._cur_state = self._state_idle
             self._cur_work_streak = 0
@@ -155,8 +156,14 @@ def skuld_closure():
         def _cmd_get_tasks(self, cmd):
             self._reply_cmd(cmd, self._tasks)
 
+        def _cmd_get_cur_task(self, cmd):
+            self._reply_cmd(cmd, self._cur_task)
+
         def _cmd_set_progress_symbol(self, cmd):
             self._progress_symbol = cmd.args
+
+        def _cmd_set_squash_symbol(self, cmd):
+            self._squash_symbol = cmd.args
 
         def _cmd_start_timer(self, cmd):
             if isinstance(cmd.args, int):
@@ -165,12 +172,14 @@ def skuld_closure():
                 self._cur_task = 0
             if self._cur_task >= 0 and self._cur_task < len(self._tasks):
                 self._vim_adaptor.remote_notify(
-                    '_state_idle -> _state_working')
+                    'Skuld: Idle -> Working')
                 self._cur_state_start_time = time.time()
                 self._cur_state = self._state_working
 
         def _cmd_stop_timer(self, cmd):
-            self._vim_adaptor.remote_notify('_state_* -> _state_idle')
+            if self._cur_state == self._state_working:
+                self._tasks[self._cur_task] += self._squash_symbol
+            self._vim_adaptor.remote_notify('Skuld: * -> Idle')
             self._cur_state_start_time = None
             self._cur_state = self._state_idle
             self._cur_work_streak = 0
@@ -217,12 +226,12 @@ def skuld_closure():
                     self._cur_work_streak += 1
                     if self._cur_work_streak < self._max_work_streak:
                         self._vim_adaptor.remote_notify(
-                            '_state_working -> _state_resting')
+                            'Skuld: Working -> Resting')
                         return self._state_resting
                     else:
                         self._cur_work_streak = 0
                         self._vim_adaptor.remote_notify(
-                            '_state_working -> _state_long_resting')
+                            'Skuld: Working -> Long Resting')
                         return self._state_long_resting
                 else:
                     return self._state_working
@@ -235,7 +244,7 @@ def skuld_closure():
                 diff_time = now - self._cur_state_start_time
                 if diff_time >= (self._rest_period * 60):
                     self._vim_adaptor.remote_notify(
-                        '_state_resting -> _state_working')
+                        'Skuld: Resting -> Working')
                     return self._state_working
                 else:
                     return self._state_resting
@@ -248,7 +257,7 @@ def skuld_closure():
                 diff_time = now - self._cur_state_start_time
                 if diff_time >= (self._long_rest_period * 60):
                     self._vim_adaptor.remote_notify(
-                        '_state_long_resting -> _state_working')
+                        'Skuld: Long Resting -> Working')
                     return self._state_working
                 else:
                     return self._state_long_resting
@@ -277,6 +286,10 @@ def skuld_closure():
                 progress_sym = vim.vars.get('skuld_progress_symbol', '*')
                 skuld_obj.cmd(SkuldCmd(name='set_progress_symbol',
                                        args=progress_sym, block=False))
+
+                squash_sym = vim.vars.get('skuld_squash_symbol', 'x')
+                skuld_obj.cmd(SkuldCmd(name='set_squash_symbol',
+                                       args=squash_sym, block=False))
 
                 work_period = vim.vars.get('skuld_work_period', 25)
                 skuld_obj.cmd(SkuldCmd(name='set_work_period',
@@ -329,7 +342,14 @@ def skuld_closure():
                 tasks = self._skuld.cmd(SkuldCmd(name='get_tasks',
                                                  args=[],
                                                  block=True))
+                cur_task = self._skuld.cmd(SkuldCmd(name='get_cur_task',
+                                                    args=[], block=True))
                 buf[:] = tasks
+                vim.command('sign unplace 1')
+                if cur_task >= 0 and cur_task < len(tasks):
+                    vim.command(
+                        'sign place 1 line={} name=SkuldCurrentTask buffer={}'
+                        .format(cur_task + 1, buf.number))
 
         def remote_notify(self, msg):
             """Display a message remotely."""
@@ -369,6 +389,16 @@ def skuld_closure():
             """Shortcut for switching current task."""
             self._skuld.cmd(SkuldCmd(name='switch_task',
                                      args=task_id, block=False))
+
+        def start_task(self, task_id):
+            """Shortcut for starting a task right away."""
+            if self.timer_enabled():
+                self._skuld.cmd(SkuldCmd(name='switch_task',
+                                         args=task_id, block=False))
+                self.update_buf_content()
+            else:
+                self._skuld.cmd(SkuldCmd(name='start_timer',
+                                         args=task_id, block=False))
 
         def get_state(self):
             """
